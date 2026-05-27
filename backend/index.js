@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import fs from 'fs';
 import express from 'express';
 import http from 'http';
 import path from 'path';
@@ -91,8 +92,14 @@ app.get('/api/rooms/:roomId', (req, res) => {
 
 if (process.env.NODE_ENV === 'production') {
   const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
-  app.use(express.static(frontendDist));
-  app.get('*', (_req, res) => res.sendFile(path.join(frontendDist, 'index.html')));
+  const indexHtml = path.join(frontendDist, 'index.html');
+
+  if (fs.existsSync(indexHtml)) {
+    app.use(express.static(frontendDist));
+    app.get('*', (_req, res) => res.sendFile(indexHtml));
+  } else {
+    console.warn(`Frontend dist not found at ${indexHtml}. Skipping static file serving.`);
+  }
 }
 
 const emitState = (room) => {

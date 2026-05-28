@@ -576,6 +576,10 @@ canvas {
   padding: 5px 8px;
   word-break: break-word;
 }
+.copy{
+  background-color: #e8e8e8;
+  color: black;
+}
 
 .messages p:nth-child(odd) {
   background: #e8e8e8;

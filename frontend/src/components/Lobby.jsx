@@ -21,7 +21,7 @@ export function Lobby({ me, players, roomCode, roomLink, onStartGame }) {
       <p>{players.length < 2 ? 'Invite one more player with the room code.' : 'Ready when you are.'}</p>
       <div className="room-invite">
         <span>Room code: <strong>{roomCode}</strong></span>
-        {roomLink && <button type="button" onClick={() => navigator.clipboard.writeText(roomLink)}>Copy invite link</button>}
+        {/* {roomLink && <button type="button"  className="copy" onClick={() => navigator.clipboard.writeText(roomLink)}>Copy invite link</button>} */}
       </div>
       <div className="player-list-summary">
         {players.map((player) => (

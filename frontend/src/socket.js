@@ -6,7 +6,7 @@
 //   reconnectionAttempts: 5,
 //   timeout: 5000
 // });
-// import { io } from 'socket.io-client';
+import { io } from 'socket.io-client';
 
 const serverUrl = import.meta.env.DEV
   ? 'http://localhost:4000'

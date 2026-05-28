@@ -33,7 +33,11 @@ export default function App() {
       setConnected(false);
       setNotice(`Cannot connect to backend: ${error.message}`);
     });
-    socket.on('game_state', setState);
+    socket.on('game_state', (s) => {
+      // eslint-disable-next-line no-console
+      console.log('Received game_state', s?.phase, s?.players?.length);
+      setState(s);
+    });
     socket.on('round_start', ({ wordOptions }) => setWordOptions(wordOptions || []));
     socket.on('chat_message', (message) => setMessages((items) => [...items.slice(-80), message]));
     socket.on('guess_result', ({ playerName }) => setNotice(`${playerName} guessed correctly`));

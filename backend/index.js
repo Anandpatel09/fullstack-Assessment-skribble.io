@@ -596,6 +596,105 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('ready', () => {
+    const room = registry.playerRoom(socket.id);
+    const player = room?.players.find((candidate) => candidate.id === socket.id);
+    console.log('[socket] ready event from', socket.id, 'room:', room?.id);
+    if (!room || !player) return;
+    player.ready = !player.ready;
+    console.log(`[room ${room.id}] player ${player.name} ready=${player.ready}`);
+    emitState(room);
+  });
+
+  socket.on('start_game', async (_payload, ack) => {
+    try {
+      console.log('[socket] start_game event from', socket.id);
+      const room = registry.playerRoom(socket.id);
+      const player = room?.players.find((candidate) => candidate.id === socket.id);
+      if (!room || !player?.isHost) throw new Error('Only the host can start.');
+      room.startGame();
+      await db.updateScores(room);
+      io.to(room.id).emit('round_start', {
+        drawerId: room.drawerId,
+        wordOptions: room.wordOptions,
+        drawTime: room.settings.drawTime
+      });
+      ack?.({ ok: true });
+      emitState(room);
+    } catch (error) {
+      ack?.({ ok: false, error: error.message });
+    }
+  });
+
+  socket.on('word_chosen', async ({ word }, ack) => {
+    try {
+      const room = registry.playerRoom(socket.id);
+      if (!room || room.drawerId !== socket.id) throw new Error('Only the drawer can choose.');
+      room.chooseWord(word);
+      ack?.({ ok: true });
+      scheduleRoundEnd(room);
+      emitState(room);
+    } catch (error) {
+      ack?.({ ok: false, error: error.message });
+    }
+  });
+
+  socket.on('draw_start', (stroke) => handleDraw(socket, 'draw_start', stroke));
+  socket.on('draw_move', (point) => handleDraw(socket, 'draw_move', point));
+  socket.on('draw_end', (point) => handleDraw(socket, 'draw_end', point));
+
+  socket.on('canvas_clear', () => {
+    const room = registry.playerRoom(socket.id);
+    if (!room || room.drawerId !== socket.id) return;
+    room.strokes = [];
+    io.to(room.id).emit('canvas_clear');
+  });
+
+  socket.on('draw_undo', () => {
+    const room = registry.playerRoom(socket.id);
+    if (!room || room.drawerId !== socket.id) return;
+    room.strokes.pop();
+    io.to(room.id).emit('draw_undo');
+  });
+
+  socket.on('guess', async ({ text }, ack) => {
+    const room = registry.playerRoom(socket.id);
+    const player = room?.players.find((candidate) => candidate.id === socket.id);
+    if (!room || !player) return;
+    const result = room.scoreGuess(socket.id, text);
+    if (result) {
+      emitChat(room, { system: true, text: `${player.name} guessed the word!` });
+      io.to(room.id).emit('guess_result', {
+        correct: true,
+        playerId: player.id,
+        playerName: player.name,
+        points: player.score
+      });
+      await db.updateScores(room);
+      ack?.({ ok: true, correct: true });
+      if (result.allGuessed) {
+        room.endRound();
+        io.to(room.id).emit('round_end', { word: room.currentWord, scores: room.leaderboard });
+        emitState(room);
+        setTimeout(() => {
+          advanceRound(room);
+        }, 4500);
+      } else {
+        emitState(room);
+      }
+      return;
+    }
+    emitChat(room, { playerId: player.id, playerName: player.name, text: String(text || '').slice(0, 160) });
+    ack?.({ ok: true, correct: false });
+  });
+
+  socket.on('chat', ({ text }) => {
+    const room = registry.playerRoom(socket.id);
+    const player = room?.players.find((candidate) => candidate.id === socket.id);
+    if (!room || !player || room.phase === 'drawing') return;
+    emitChat(room, { playerId: player.id, playerName: player.name, text: String(text || '').slice(0, 160) });
+  });
+
   socket.on('disconnect', async () => {
     console.log('User disconnected:', socket.id);
 

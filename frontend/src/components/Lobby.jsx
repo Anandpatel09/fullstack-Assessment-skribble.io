@@ -2,6 +2,19 @@ import React from 'react';
 import { socket } from '../socket.js';
 
 export function Lobby({ me, players, roomCode, roomLink, onStartGame }) {
+  const handleReady = (e) => {
+    e.preventDefault();
+    try {
+      // log for debugging whether the button click is firing and socket state
+      // eslint-disable-next-line no-console
+      console.log('Ready clicked', { id: socket?.id, connected: socket?.connected });
+      socket?.emit('ready');
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to emit ready', err);
+    }
+  };
+
   return (
     <div className="center-panel">
       <h2>Room lobby</h2>
@@ -19,7 +32,7 @@ export function Lobby({ me, players, roomCode, roomLink, onStartGame }) {
         ))}
       </div>
       <div className="actions">
-        <button onClick={() => socket.emit('ready')}>{me?.ready ? 'Unready' : 'Ready'}</button>
+        <button type="button" onClick={handleReady}>{me?.ready ? 'Unready' : 'Ready'}</button>
         {me?.isHost && <button disabled={players.length < 2} onClick={onStartGame}>Start game</button>}
       </div>
     </div>
